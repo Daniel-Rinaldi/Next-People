@@ -1,0 +1,58 @@
+﻿@page "/generator"
+@rendermode InteractiveServer
+@inject TicketStateService State
+@implements IDisposable
+
+<div class="antialiased font-sans h-screen w-screen bg-gradient-to-br from-teal-50 to-blue-100 flex flex-col justify-center items-center p-4">
+    <div class="text-center mb-12">
+        <h1 class="text-5xl font-bold text-teal-600">INSTITUTO V&G</h1>
+    </div>
+    <div class="w-full max-w-4xl flex flex-col md:flex-row items-center justify-around">
+        <div class="flex flex-col space-y-6 mb-8 md:mb-0">
+            <button @onclick="() => State.GenerateTicket(false)" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-6 px-16 rounded-full shadow-lg transition-transform transform hover:scale-105 text-3xl">
+                Senha Comum
+            </button>
+            <button @onclick="() => State.GenerateTicket(true)" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-6 px-16 rounded-full shadow-lg transition-transform transform hover:scale-105 text-3xl">
+                Senha Prioritária
+            </button>
+        </div>
+        <div class="text-center">
+            <p class="text-2xl text-gray-600 mb-2">Retire sua Senha</p>
+            <div class="bg-white p-8 rounded-2xl shadow-xl">
+                <span class="text-8xl font-black text-gray-800">@lastGeneratedTicketNumber</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string lastGeneratedTicketNumber = "----";
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+    }
+
+    private async void OnStateChanged()
+    {
+        // Esta lógica é um pouco mais complexa agora, pois precisamos encontrar a última senha gerada.
+        // A forma mais simples é pegar o ticket mais recente da sala de espera principal,
+        // ou de qualquer fila de espera, assumindo que ele acabou de ser adicionado.
+        var lastTicket = State.WaitingQueue.Concat(State.Stages.SelectMany(s => s.WaitingTickets))
+                                            .OrderByDescending(t => t.Timestamp)
+                                            .FirstOrDefault();
+
+        if (lastTicket != null)
+        {
+            lastGeneratedTicketNumber = lastTicket.Number;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}
+

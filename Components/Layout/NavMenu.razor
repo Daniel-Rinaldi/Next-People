@@ -1,0 +1,72 @@
+﻿@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<div class="flex h-screen w-64 flex-col justify-between border-e bg-white">
+    <div class="px-4 py-6">
+        <a href="/" class="block text-teal-600">
+            <span class="font-bold text-lg">Next People</span>
+        </a>
+
+        <ul class="mt-6 space-y-1">
+            <li>
+                <NavLink class="block rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700" href="" Match="NavLinkMatch.All">
+                    <span class="mr-2">🏠</span> Home
+                </NavLink>
+            </li>
+
+            <AuthorizeView>
+                <Authorized>
+                    <li>
+                        <NavLink class="block rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700" href="Account/Manage">
+                            <span class="mr-2">👤</span> @context.User.Identity?.Name
+                        </NavLink>
+                    </li>
+                    <li>
+                        <form action="Account/Logout" method="post">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                            <button type="submit" class="w-full text-left block rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700">
+                                <span class="mr-2">🚪</span> Logout
+                            </button>
+                        </form>
+                    </li>
+                </Authorized>
+                <NotAuthorized>
+                    <li>
+                        <NavLink class="block rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700" href="Account/Register">
+                            <span class="mr-2">📝</span> Register
+                        </NavLink>
+                    </li>
+                    <li>
+                        <NavLink class="block rounded-lg px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700" href="Account/Login">
+                            <span class="mr-2">🔑</span> Login
+                        </NavLink>
+                    </li>
+                </NotAuthorized>
+            </AuthorizeView>
+        </ul>
+    </div>
+</div>
+
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}
+
