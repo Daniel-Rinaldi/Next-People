@@ -1,5 +1,7 @@
 ﻿@page "/generator"
 @rendermode InteractiveServer
+
+@using NextPeople.Services
 @inject TicketStateService State
 @implements IDisposable
 
@@ -35,9 +37,6 @@
 
     private async void OnStateChanged()
     {
-        // Esta lógica é um pouco mais complexa agora, pois precisamos encontrar a última senha gerada.
-        // A forma mais simples é pegar o ticket mais recente da sala de espera principal,
-        // ou de qualquer fila de espera, assumindo que ele acabou de ser adicionado.
         var lastTicket = State.WaitingQueue.Concat(State.Stages.SelectMany(s => s.WaitingTickets))
                                             .OrderByDescending(t => t.Timestamp)
                                             .FirstOrDefault();

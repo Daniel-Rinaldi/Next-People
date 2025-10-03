@@ -1,4 +1,6 @@
-﻿public class TicketStateService
+﻿namespace NextPeople.Services;
+
+public class TicketStateService
 {
     // --- ESTADO DA APLICAÇÃO ---
     public List<ServiceStage> Stages { get; private set; } = new();
@@ -9,12 +11,9 @@
     private int commonTicketCounter = 1;
     private int priorityTicketCounter = 1;
 
-    // --- EVENTOS ---
     public event Action? OnChange;
 
     private void NotifyStateChanged() => OnChange?.Invoke();
-
-    // --- LÓGICA DE NEGÓCIO ---
 
     public void CallNextInStage(ServiceStage stage, Guid workstationId)
     {
@@ -36,6 +35,8 @@
             };
 
             History.Insert(0, calledInfo);
+            if (History.Count > 50) History.RemoveAt(History.Count - 1);
+
             NotifyStateChanged();
         }
     }
@@ -54,17 +55,9 @@
             commonTicketCounter++;
         }
 
-        if (AutoForwardEnabled)
+        if (AutoForwardEnabled && Stages.Any())
         {
-            var firstStage = Stages.FirstOrDefault();
-            if (firstStage != null)
-            {
-                firstStage.WaitingTickets.Add(newTicket);
-            }
-            else
-            {
-                WaitingQueue.Add(newTicket);
-            }
+            Stages.First().WaitingTickets.Add(newTicket);
         }
         else
         {
@@ -143,6 +136,6 @@
     public class Ticket { public Guid Id { get; set; } = Guid.NewGuid(); public string Number { get; set; } = ""; public bool IsPriority { get; set; } public DateTime Timestamp { get; set; } }
     public class Workstation { public Guid Id { get; set; } = Guid.NewGuid(); public string Name { get; set; } = ""; public Ticket? CurrentTicket { get; set; } }
     public class ServiceStage { public Guid Id { get; set; } = Guid.NewGuid(); public string Name { get; set; } = ""; public string WorkstationTypeName { get; set; } = "Guichê"; public List<Workstation> Workstations { get; set; } = new(); public List<Ticket> WaitingTickets { get; set; } = new(); }
-    public class CalledTicketInfo { public string TicketNumber { get; set; } = ""; public string StageName { get; set; } = ""; public string WorkstationName { get; set; } = ""; public DateTime Timestamp { get; set; } }
+    public class CalledTicketInfo { public string TicketNumber { get; set; } = string.Empty; public string StageName { get; set; } = string.Empty; public string WorkstationName { get; set; } = string.Empty; public DateTime Timestamp { get; set; } }
 }
 

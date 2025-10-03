@@ -1,1 +1,112 @@
-﻿
+﻿@page "/tv"
+@rendermode InteractiveServer
+
+@using Microsoft.JSInterop
+@using NextPeople.Services
+@inject TicketStateService State
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div class="antialiased font-sans h-screen w-screen bg-[#121212] text-white p-6 flex flex-col md:flex-row gap-6">
+    <!-- Painel de Estágios -->
+    <div class="flex-grow grid grid-flow-row grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
+        @foreach (var stage in State.Stages)
+        {
+            var lastCall = stage.Workstations
+            .Where(w => w.CurrentTicket != null)
+            .OrderByDescending(w => w.CurrentTicket!.Timestamp)
+            .FirstOrDefault();
+
+            <div class="bg-gray-800 rounded-2xl p-6 flex flex-col justify-center items-center text-center shadow-lg">
+                <h2 class="text-3xl font-semibold text-gray-400 uppercase tracking-wider mb-4">@stage.Name</h2>
+
+                @if (lastCall?.CurrentTicket != null)
+                {
+                    <span class="text-8xl font-bold text-yellow-400">@lastCall.CurrentTicket.Number</span>
+                    <span class="text-4xl font-medium text-gray-300 mt-2">@($"{stage.WorkstationTypeName} {lastCall.Name}")</span>
+                }
+                else
+                {
+                    <span class="text-8xl font-bold text-yellow-400">----</span>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Painel Lateral -->
+    <div class="w-full md:w-96 bg-gray-800 rounded-2xl p-6 flex flex-col shadow-lg flex-shrink-0">
+        <div class="text-center mb-6">
+            <p class="text-6xl font-mono font-bold">@_currentTime.ToString("HH:mm")<span class="animate-pulse">:</span>@_currentTime.ToString("ss")</p>
+            <p class="text-lg text-gray-400">@_currentTime.ToString("dddd, dd 'de' MMMM 'de' yyyy")</p>
+            <p class="text-lg text-gray-400 mt-2">Últimas Chamadas</p>
+        </div>
+        <div class="flex-grow space-y-3 text-2xl">
+            @foreach (var called in State.History.Take(5))
+            {
+                <div class="flex justify-between items-baseline">
+                    <span class="font-bold text-yellow-400">@called.TicketNumber</span>
+                    <span class="text-gray-300">@called.WorkstationName</span>
+                </div>
+            }
+        </div>
+        <div class="mt-6 bg-gray-700 rounded-lg p-4 flex items-center justify-center">
+            <svg class="w-8 h-8 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="..."></path></svg>
+            <span class="text-xl font-semibold">@State.WaitingQueue.Count na espera</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    private DateTime _currentTime = DateTime.Now;
+    private Timer? _timer;
+    private string? _lastAnnouncedTicketNumber;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+
+        _timer = new Timer(_ =>
+        {
+            _currentTime = DateTime.Now;
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private async void OnStateChanged()
+    {
+        var latest = State.History.FirstOrDefault();
+        if (latest != null && latest.TicketNumber != _lastAnnouncedTicketNumber)
+        {
+            _lastAnnouncedTicketNumber = latest.TicketNumber;
+
+            var tipo = latest.TicketNumber.StartsWith("P") ? "Senha Prioritária" : "Senha Comum";
+            var numeroSoletrado = string.Join(" ", latest.TicketNumber.ToCharArray());
+            var frase = $"{tipo}, {numeroSoletrado}, {latest.StageName}, {latest.WorkstationName}";
+
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("speak", frase);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao reproduzir a voz: {ex.Message}");
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("loadSpeechScript");
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+        _timer?.Dispose();
+    }
+}

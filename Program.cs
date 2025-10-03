@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Next_People;
 using Next_People.Components;
 using Next_People.Components.Account;
 using Next_People.Data;
+using NextPeople.Services; // ADICIONADO AQUI
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,4 +66,3 @@ app.MapRazorComponents<App>()
 app.MapAdditionalIdentityEndpoints();
 
 app.Run();
-
